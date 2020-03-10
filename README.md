@@ -1,4 +1,4 @@
-** CUSP London Data Dive 2020
+# CUSP London Data Dive 2020
 
 Each team has a directory in which to upload their code.
 
