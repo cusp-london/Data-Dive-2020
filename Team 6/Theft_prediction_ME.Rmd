@@ -1,0 +1,114 @@
+---
+title: "theft"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## R Markdown
+```{r}
+library(arm)
+library(lme4)
+library(ggplot2)
+library(lmtest)
+library(spatialreg)
+library(RColorBrewer)
+library(sjstats)
+library(tseries)
+```
+
+## visualising monthly data as heat map.
+```{r}
+wmatrix <- read_csv("wmatrix.csv")
+ward<-data.matrix(wmatrix)
+coul1<-colorRampPalette(brewer.pal(9,"BuPu"))(25)
+heatmap(ward,Rowv=NA,Colv=NA,scale="none",col=coul1)
+```
+
+## KPSS test for monthly data. Considering which data frequency to use for modeling, monthly or annual.
+```{r}
+s1<-read.csv("series1.csv",header=F)$V1
+kpss.test(s1)
+pp.test(s1)
+```
+
+
+## fitting model with 2018 theft volume and time lagged predictors and examine model fit, calculate ICC.
+```{r}
+test18 <- read_csv("test518c.csv")
+m0<-lmer(Theft18~1+(1|boro),data=test18)
+m1<-lmer(Theft18~1+(1|boro)+(1|cl),data=test18)
+summary(m1)
+coef(m1)$boro
+fixef(m1)
+ranef(m1)$boro
+se.fixef(m1)
+se.ranef(m1)$boro
+coef(m1)$boro[32,1]+c(-2,2)*se.ranef(m1)$boro
+
+
+m2<-lmer(Theft18~1+inc+oldpop+trans+(1|boro),data=test18)
+summary(m2)
+plot(m2)
+u=tapply(test18$trans,test18$boro,mean)
+a.hat.m2=fixef(m2)[1]+fixef(m2)[4]*u+ranef(m2)$boro[,1]
+a.se.m2=se.ranef(m2)$boro[,1]
+lower=a.hat.m2-a.se.m2
+upper=a.hat.m2+a.se.m2
+par(mar=c(3.5,3.5,1,1),mgp=c(2.5,.7,0),cex.lab=1.5,tck=-.01,cex=1.2,las=1,cex.axis=1.5,pch=20)
+par(mar=c(3.5,3.5,1,1),mgp=c(2.5,.7,0),cex.lab=1.5,tck=-.01,cex=1.2,las=1,cex.axis=1.5,pch=20)
+plot(u,a.hat.m2,ylim=range(lower,upper),xlab="borough",ylab="est.intercept")
+curve(fixef(m2)[1]+fixef(m2)[4]*x,lwd=1.5,col="black",add=TRUE)
+
+
+icc(m2, adjusted = FALSE)
+```
+
+## model comparison with key predictors. 
+## Results suggest random intercept model, as there's not sufficient information to estimate random slopes.
+```{r}
+test18 <- read_csv("test518c.csv")
+m2<-lmer(Theft18~1+inc+oldpop+trans+(1|boro),data=test18)
+m3<-lmer(Theft18~1+inc+oldpop+rn+(1|boro),data=test18)
+m4<-lmer(Theft18~1+inc+oldpop+pop+rn+(1|boro),data=test18)
+m5<-lmer(Theft18~1+mp+oldpop+pop+rn+(1|boro),data=test18)
+m6<-lmer(Theft18~1+mp+oldpop+pop+rn+mp:rn+(1+mp|boro),data=test18)
+m7<-lmer(Theft18~1+mp+oldpop+pop+(1|boro)+(1|cl),data=test18)
+summary(m2)
+summary(m3)
+summary(m4)
+summary(m5)
+summary(m6)
+summary(m7)
+plot(m2)
+plot(m3)
+plot(m4)
+plot(m5)
+plot(m6)
+plot(m7)
+
+```
+
+
+## with chosen formula, test model prediction of 2019 with real 2019.
+
+```{r}
+test19 <- read_csv("test19.csv")
+str(p2019<-predict(m7,test19))
+p2020
+```
+
+
+## with chosen formula, fit model with 2017-2019data for 2020 prediction
+```{r}
+fit19 <- read_csv("fit19.csv")
+test20 <- read_csv("test20c.csv")
+m72<-lmer(Theft18~1+mp+oldpop+pop+(1|boro)+(1|cl),data=fit519)
+display(m72)
+plot(m62)
+str(p2020<-predict(m72,test20))
+p2020
+```
+
